@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  voiceforge-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_GEMINI_API_KEY=${NEXT_PUBLIC_GEMINI_API_KEY}
+      - NODE_ENV=production
+    restart: unless-stopped
+    # If using GPU for local python models (not used in this Next.js Gemini API version, but included for reference)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

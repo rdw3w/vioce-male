@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --color-theme-bg: var(--bg);
+  --color-theme-orb1: var(--orb1);
+  --color-theme-orb2: var(--orb2);
+  --color-theme-primary: var(--primary);
+  --color-theme-primary-hover: var(--primary-hover);
+  --color-theme-border: var(--border);
+  --color-theme-surface: var(--surface);
+}
+
+:root, [data-theme="nebula"] {
+  --bg: #09090b; /* zinc-950 */
+  --surface: rgba(24, 24, 27, 0.4); /* zinc-900/40 */
+  --orb1: rgba(99, 102, 241, 0.2); /* indigo-500/20 */
+  --orb2: rgba(139, 92, 246, 0.1); /* violet-500/10 */
+  --primary: #6366f1; /* indigo-500 */
+  --primary-hover: #4f46e5; /* indigo-600 */
+  --border: rgba(39, 39, 42, 0.5); /* zinc-800/50 */
+}
+
+[data-theme="aurora"] {
+  --bg: #022c22; /* emerald-950 */
+  --surface: rgba(2, 44, 34, 0.4); /* emerald-900/40 */
+  --orb1: rgba(16, 185, 129, 0.2); /* emerald-500/20 */
+  --orb2: rgba(20, 184, 166, 0.1); /* teal-500/10 */
+  --primary: #10b981; /* emerald-500 */
+  --primary-hover: #059669; /* emerald-600 */
+  --border: rgba(6, 78, 59, 0.5); /* emerald-800/50 */
+}
+
+[data-theme="sunset"] {
+  --bg: #431407; /* orange-950 */
+  --surface: rgba(67, 20, 7, 0.4); /* orange-900/40 */
+  --orb1: rgba(249, 115, 22, 0.2); /* orange-500/20 */
+  --orb2: rgba(225, 29, 72, 0.1); /* rose-500/10 */
+  --primary: #f97316; /* orange-500 */
+  --primary-hover: #ea580c; /* orange-600 */
+  --border: rgba(124, 45, 18, 0.5); /* orange-800/50 */
+}
+
+[data-theme="midnight"] {
+  --bg: #020617; /* slate-950 */
+  --surface: rgba(15, 23, 42, 0.4); /* slate-900/40 */
+  --orb1: rgba(59, 130, 246, 0.2); /* blue-500/20 */
+  --orb2: rgba(14, 165, 233, 0.1); /* sky-500/10 */
+  --primary: #3b82f6; /* blue-500 */
+  --primary-hover: #2563eb; /* blue-600 */
+  --border: rgba(30, 41, 59, 0.5); /* slate-800/50 */
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(24, 24, 27, 0.5);
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+}
