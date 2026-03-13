@@ -50,8 +50,27 @@ export async function POST(req: Request) {
       }
     }
 
+    // Fallback to Gemini
+    if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+      try {
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: prompt,
+          config: {
+            systemInstruction: 'You are an expert scriptwriter for voiceovers. Write a short, engaging script based on the user prompt. Do not include stage directions, just the spoken text.',
+          }
+        });
+        return NextResponse.json({ text: response.text });
+      } catch (e: any) {
+        console.error("Gemini failed...", e);
+        lastError = e.message;
+      }
+    }
+
     return NextResponse.json({ 
-      error: "Both AI providers failed or API keys are missing. Please configure OPENAI_API_KEY or GROK_API_KEY in your environment variables.",
+      error: "All AI providers failed or API keys are missing. Please configure OPENAI_API_KEY, GROK_API_KEY, or NEXT_PUBLIC_GEMINI_API_KEY.",
       details: lastError
     }, { status: 500 });
   } catch (error) {

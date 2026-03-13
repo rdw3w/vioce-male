@@ -14,9 +14,14 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <body className="bg-theme-bg text-zinc-50 antialiased min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-1000" suppressHydrationWarning>
         <ThemeProvider>
           {/* 3D Animated Background */}
-          <div className="fixed inset-0 z-[-1] pointer-events-none">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-theme-primary/20 via-theme-bg to-theme-bg transition-colors duration-1000"></div>
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+          <div className="fixed inset-0 z-[-1] pointer-events-none perspective-container overflow-hidden bg-theme-bg transition-colors duration-1000">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-theme-primary/10 via-theme-bg to-theme-bg transition-colors duration-1000"></div>
+            
+            {/* 3D Grid */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="grid-plane"></div>
+            </div>
+
             {/* Animated glowing orbs */}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-theme-orb1 rounded-full blur-3xl animate-pulse transition-colors duration-1000"></div>
             <div className="absolute bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-theme-orb2 rounded-full blur-3xl animate-pulse transition-colors duration-1000" style={{ animationDelay: '2s' }}></div>

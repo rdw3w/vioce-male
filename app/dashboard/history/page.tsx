@@ -2,19 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { db } from '@/lib/db';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Download, Clock, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Download, Clock, Trash2, Loader2, ChevronUp } from 'lucide-react';
 import { WaveformPlayer } from '@/components/waveform-player';
 
 interface Generation {
   id: string;
   text: string;
   voiceId: string;
-  outputData: string;
-  chunkCount?: number;
+  audioUrl: string;
   createdAt: string;
 }
 
@@ -22,12 +20,10 @@ function HistoryItem({
   gen, 
   onDelete, 
   onDownload, 
-  getFullAudioData 
 }: { 
   gen: Generation; 
   onDelete: (gen: Generation) => Promise<void>; 
   onDownload: (gen: Generation, filename: string) => Promise<void>; 
-  getFullAudioData: (gen: Generation) => Promise<string>;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -44,14 +40,10 @@ function HistoryItem({
     if (!audioUrl) {
       setIsLoading(true);
       try {
-        const base64Data = await getFullAudioData(gen);
-        // Add WAV header if not present, but here we know it's raw PCM from the previous code,
-        // wait, the previous code created a Blob with type 'audio/pcm;rate=24000'.
-        // WaveSurfer might need a proper WAV header to decode it correctly in all browsers.
-        // Let's use the same Blob creation as before.
+        const base64Data = gen.audioUrl;
         const audioBlob = new Blob(
           [Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))],
-          { type: 'audio/pcm;rate=24000' }
+          { type: 'audio/mpeg' }
         );
         setAudioUrl(URL.createObjectURL(audioBlob));
       } catch (error) {
@@ -76,12 +68,12 @@ function HistoryItem({
   };
 
   return (
-    <Card className="bg-zinc-950 border-zinc-800 hover:border-zinc-700 transition-colors overflow-hidden">
+    <Card className="bg-zinc-950/60 backdrop-blur-xl border-zinc-800/50 hover:border-purple-500/50 transition-all duration-300 overflow-hidden group">
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <Button 
             size="icon" 
-            className="rounded-full shrink-0 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20"
+            className="rounded-full shrink-0 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 group-hover:scale-110 transition-transform"
             onClick={handleExpand}
             disabled={isLoading}
           >
@@ -100,18 +92,20 @@ function HistoryItem({
               <span className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800">
                 {gen.voiceId}
               </span>
-              <span>•</span>
-              <span>{new Date(gen.createdAt).toLocaleString()}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {new Date(gen.createdAt).toLocaleDateString()}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <Button 
-              size="icon" 
               variant="ghost" 
-              className="text-zinc-400 hover:text-zinc-50"
+              size="icon" 
               onClick={handleDownloadClick}
               disabled={isDownloading}
+              className="text-zinc-400 hover:text-purple-400 hover:bg-purple-400/10"
             >
               {isDownloading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -120,11 +114,11 @@ function HistoryItem({
               )}
             </Button>
             <Button 
-              size="icon" 
               variant="ghost" 
-              className="text-zinc-400 hover:text-red-400"
+              size="icon" 
               onClick={handleDeleteClick}
               disabled={isDeleting}
+              className="text-zinc-400 hover:text-red-400 hover:bg-red-400/10"
             >
               {isDeleting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -134,7 +128,7 @@ function HistoryItem({
             </Button>
           </div>
         </div>
-        
+
         {isExpanded && audioUrl && (
           <div className="mt-4 pt-4 border-t border-zinc-800/50">
             <WaveformPlayer url={audioUrl} />
@@ -153,117 +147,81 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'generations'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Generation[];
-      setGenerations(data);
+    const loadGenerations = async () => {
+      const gens = await db.getGenerations(user.uid);
+      setGenerations(gens);
       setLoading(false);
-    }, (error) => {
-      console.error('Error fetching history:', error);
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    loadGenerations();
   }, [user]);
 
-  const getFullAudioData = async (gen: Generation): Promise<string> => {
-    if (gen.outputData !== 'CHUNKED') {
-      return gen.outputData;
+  const handleDelete = async (gen: Generation) => {
+    if (!user) return;
+    try {
+      await db.deleteGeneration(gen.id);
+      setGenerations(prev => prev.filter(g => g.id !== gen.id));
+    } catch (error) {
+      console.error('Error deleting generation:', error);
     }
-    
-    // Fetch chunks
-    const chunksSnapshot = await getDocs(collection(db, 'generations', gen.id, 'chunks'));
-    const chunks = chunksSnapshot.docs
-      .map(d => d.data())
-      .sort((a, b) => a.index - b.index);
-      
-    return chunks.map(c => c.data).join('');
   };
 
   const handleDownload = async (gen: Generation, filename: string) => {
     try {
-      const base64Data = await getFullAudioData(gen);
-      
+      const base64Data = gen.audioUrl;
       const audioBlob = new Blob(
         [Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))],
-        { type: 'audio/pcm;rate=24000' }
+        { type: 'audio/mpeg' }
       );
       const url = URL.createObjectURL(audioBlob);
+      
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${filename}.wav`;
+      a.download = `${filename}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading audio:', error);
     }
   };
 
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleDelete = async (gen: Generation) => {
-    try {
-      setDeletingId(gen.id);
-      if (gen.outputData === 'CHUNKED') {
-        // Delete chunks first
-        const chunksSnapshot = await getDocs(collection(db, 'generations', gen.id, 'chunks'));
-        const deletePromises = chunksSnapshot.docs.map(d => deleteDoc(d.ref));
-        await Promise.all(deletePromises);
-      }
-      
-      await deleteDoc(doc(db, 'generations', gen.id));
-    } catch (error) {
-      console.error('Error deleting generation:', error);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8 relative z-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Generation History</h2>
-        <p className="text-zinc-400">View and download your previously generated audio files.</p>
+        <h1 className="text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">Generation History</h1>
+        <p className="text-zinc-400 mt-2">View and manage your previously generated magical audio files.</p>
       </div>
 
-      <div className="space-y-4">
-        {generations.length === 0 ? (
-          <Card className="bg-zinc-900/50 border-dashed border-zinc-800">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Clock className="w-12 h-12 text-zinc-600 mb-4" />
-              <p className="text-lg font-medium text-zinc-300">No history yet</p>
-              <p className="text-sm text-zinc-500">Generate your first voice to see it here.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          generations.map((gen) => (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+        </div>
+      ) : generations.length === 0 ? (
+        <Card className="bg-zinc-950/50 border-zinc-800/50 border-dashed backdrop-blur-xl">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-4">
+              <Clock className="w-8 h-8 text-zinc-500" />
+            </div>
+            <h3 className="text-lg font-medium text-zinc-200">No history yet</h3>
+            <p className="text-zinc-500 max-w-sm mt-2">
+              Your generated audio files will appear here. Head over to the dashboard to create your first voice!
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {generations.map((gen) => (
             <HistoryItem 
               key={gen.id} 
               gen={gen} 
-              onDelete={handleDelete} 
-              onDownload={handleDownload} 
-              getFullAudioData={getFullAudioData} 
+              onDelete={handleDelete}
+              onDownload={handleDownload}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

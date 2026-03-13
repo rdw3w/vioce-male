@@ -1,9 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -22,46 +25,27 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>({
+    uid: 'local-user-123',
+    email: 'local@example.com',
+    displayName: 'Local User',
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Ensure user document exists in Firestore
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userDoc = await getDoc(userRef);
-        if (!userDoc.exists()) {
-          await setDoc(userRef, {
-            email: currentUser.email,
-            plan: 'free',
-            createdAt: new Date().toISOString(),
-            role: 'user',
-          });
-        }
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // Mock user for offline mode
   }, []);
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Error signing in with Google', error);
-    }
+    setUser({
+      uid: 'local-user-123',
+      email: 'local@example.com',
+      displayName: 'Local User',
+    });
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out', error);
-    }
+    setUser(null);
   };
 
   return (

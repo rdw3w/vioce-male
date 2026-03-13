@@ -29,17 +29,21 @@ export function WaveformPlayer({ url }: WaveformPlayerProps) {
 
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: '#4f46e5', // indigo-600
-      progressColor: '#818cf8', // indigo-400
-      cursorColor: '#c7d2fe', // indigo-200
-      barWidth: 2,
-      barGap: 2,
-      barRadius: 2,
-      height: 48,
+      waveColor: '#a855f7', // purple-500
+      progressColor: '#22d3ee', // cyan-400
+      cursorColor: '#e879f9', // fuchsia-400
+      barWidth: 3,
+      barGap: 3,
+      barRadius: 3,
+      height: 64,
       normalize: true,
     });
 
-    ws.load(url);
+    ws.load(url).catch((e) => {
+      if (e.name !== 'AbortError') {
+        console.error('Error loading wavesurfer:', e);
+      }
+    });
 
     ws.on('ready', () => {
       setDuration(formatTime(ws.getDuration()));
@@ -60,13 +64,21 @@ export function WaveformPlayer({ url }: WaveformPlayerProps) {
     wavesurferRef.current = ws;
 
     return () => {
-      ws.destroy();
+      try {
+        ws.destroy();
+      } catch (e) {
+        // Ignore AbortError which happens if destroyed while fetching/decoding
+      }
     };
   }, [url]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (wavesurferRef.current && isReady) {
-      wavesurferRef.current.playPause();
+      try {
+        await wavesurferRef.current.playPause();
+      } catch (e) {
+        console.error('Error playing/pausing:', e);
+      }
     }
   };
 
@@ -79,30 +91,33 @@ export function WaveformPlayer({ url }: WaveformPlayerProps) {
   };
 
   return (
-    <div className="flex items-center gap-4 w-full bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
+    <div className="flex items-center gap-4 w-full bg-zinc-950/60 backdrop-blur-xl p-4 rounded-2xl border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
+      {/* Magical Background Glow */}
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-fuchsia-500/10 to-cyan-500/10 pointer-events-none" />
+
       <Button
         size="icon"
         variant="ghost"
-        className="shrink-0 h-10 w-10 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 hover:text-indigo-300 rounded-full"
+        className="shrink-0 h-12 w-12 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 text-cyan-300 hover:from-purple-500/30 hover:to-cyan-500/30 hover:text-cyan-200 rounded-full border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all hover:scale-105 relative z-10"
         onClick={togglePlay}
         disabled={!isReady}
       >
-        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-1" />}
+        {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
       </Button>
 
-      <div className="flex-1 flex flex-col justify-center min-w-0">
+      <div className="flex-1 flex flex-col justify-center min-w-0 relative z-10">
         <div ref={containerRef} className="w-full" />
       </div>
 
-      <div className="flex items-center gap-3 shrink-0 text-xs text-zinc-400 font-mono">
-        <span className="min-w-[70px] text-right">{currentTime} / {duration}</span>
+      <div className="flex items-center gap-3 shrink-0 text-sm text-cyan-200/70 font-mono relative z-10">
+        <span className="min-w-[80px] text-right tracking-wider">{currentTime} / {duration}</span>
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-zinc-400 hover:text-zinc-300"
+          className="h-10 w-10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-full transition-colors"
           onClick={toggleMute}
         >
-          {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
         </Button>
       </div>
     </div>

@@ -65,4 +65,35 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--primary);
   }
+
+  .perspective-container {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+  }
+
+  .grid-plane {
+    width: 200%;
+    height: 200%;
+    position: absolute;
+    bottom: -50%;
+    left: -50%;
+    background-image: 
+      linear-gradient(to right, var(--primary) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--primary) 1px, transparent 1px);
+    background-size: 50px 50px;
+    transform: rotateX(75deg) translateZ(-200px);
+    animation: grid-move 15s linear infinite;
+    opacity: 0.15;
+    mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 70%);
+  }
+
+  @keyframes grid-move {
+    0% {
+      transform: rotateX(75deg) translateZ(-200px) translateY(0);
+    }
+    100% {
+      transform: rotateX(75deg) translateZ(-200px) translateY(50px);
+    }
+  }
 }

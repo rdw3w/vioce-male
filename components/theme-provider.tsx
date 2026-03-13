@@ -31,14 +31,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return <div style={{ visibility: 'hidden' }}>{children}</div>;
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
+      <div style={{ visibility: !mounted ? 'hidden' : 'visible', display: 'contents' }}>
+        {children}
+      </div>
     </ThemeContext.Provider>
   );
 }
